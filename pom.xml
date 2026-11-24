@@ -220,6 +220,54 @@
         <directory>plugins/label-verifier-plugin/src/main/resources</directory>
       </resource>
     </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>check-localization-extension-index</id>
+            <phase>package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <property name="index.check.dir" location="${project.build.directory}/extension-index-check" />
+                <delete dir="${index.check.dir}" />
+                <unzip src="${project.build.directory}/${project.build.finalName}.hpi" dest="${index.check.dir}">
+                  <patternset>
+                    <include name="WEB-INF/lib/${project.build.finalName}.jar" />
+                  </patternset>
+                </unzip>
+                <fail message="插件包缺少插件 JAR，无法检查扩展索引。">
+                  <condition>
+                    <not><available file="${index.check.dir}/WEB-INF/lib/${project.build.finalName}.jar" /></not>
+                  </condition>
+                </fail>
+                <unzip src="${index.check.dir}/WEB-INF/lib/${project.build.finalName}.jar" dest="${index.check.dir}/jar">
+                  <patternset>
+                    <include name="META-INF/annotations/hudson.Extension" />
+                  </patternset>
+                </unzip>
+                <fail message="插件包缺少扩展注册索引，请执行 mvn clean package -DskipTests。">
+                  <condition>
+                    <not><available file="${index.check.dir}/jar/META-INF/annotations/hudson.Extension" /></not>
+                  </condition>
+                </fail>
+                <loadfile property="extension.index.content" srcFile="${index.check.dir}/jar/META-INF/annotations/hudson.Extension" encoding="ISO-8859-1" />
+                <fail message="扩展注册索引缺少 LocalizationContributorImpl，请执行 mvn clean package -DskipTests。">
+                  <condition>
+                    <not><contains string="${extension.index.content}" substring="io.jenkins.plugins.localization_zh_cn.LocalizationContributorImpl" /></not>
+                  </condition>
+                </fail>
+                <echo>已确认插件包包含中文翻译扩展注册索引。</echo>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 
   <dependencies>
